@@ -15,6 +15,7 @@ public class MyRobotStrategy extends RobotStrategy {
 	private static final double P_STATIONARY = 0.52;
 	private static final double RED_THRESHOLD = 0.75;
 	private static final double YELLOW_THRESHOLD = 0.65;
+	private static final double IMPATIENCE = 0.01;
 	
 	private int redAmmo = 1, yellowAmmo = 2;
 	private List<Observation> observations = new ArrayList<Observation>();
@@ -54,8 +55,6 @@ public class MyRobotStrategy extends RobotStrategy {
 		if (!sensor[0] && !sensor[1] && !sensor[2] && !sensor[3])
 			return;
 		
-		// TODO transition is making walls continuously larger and eventually can't break free
-		
 		Observation o = new Observation(sensor, xPos, yPos);
 		
 		/* ************************** OBSERVATION PROBABILITY ************************** */
@@ -64,11 +63,19 @@ public class MyRobotStrategy extends RobotStrategy {
 		/* ************************** TRANSITION PROBABILITY ************************** */
 		double[][] transition = getTransition();
 		double[][] expansion = getExpansion();
+		
 		for (int x = 0; x < w; x++)
 			for (int y = 0; y < h; y++)
 				beliefState[x][y] = ((beliefState[x][y] * transition[x][y]) + expansion[x][y]) * observation[x][y];
 		
 		normalize();
+		for (int x = 0; x < w; x++)
+			for (int y = 0; y < h; y++)
+				if (Double.isNaN(beliefState[x][y])) {
+					beliefState= observation;
+					break;
+				}
+					
 		observations.add(o);
 	}
 	
@@ -79,15 +86,27 @@ public class MyRobotStrategy extends RobotStrategy {
 				observation[x][y] = 1.0;
 				if ((sensor[WEST] && x >= xPos) || (sensor[EAST] && x <= xPos) ||
 					(sensor[SOUTH] && y <= yPos) || (sensor[NORTH] && y >= yPos) ||
+					(!sensor[NORTH] && x == xPos && y <= yPos) || 
+					(!sensor[SOUTH] && x == xPos && y >= yPos) ||
+					(!sensor[WEST] && y == yPos && x <= xPos) ||
+					(!sensor[EAST] && y == yPos && x >= xPos) ||
 					(x == xPos && y == yPos))
 						observation[x][y] = ZERO;
 				else {
-					if (sensor[NORTH] || sensor[SOUTH])
-						observation[x][y] *= ((double)Math.abs(y - yPos)) / 
+					double value;
+					if (sensor[NORTH] || sensor[SOUTH]) {
+						value = ((double)Math.abs(y - yPos)) / 
 							((double)Math.abs(x - xPos) + (double)Math.abs(y  - yPos));
-					else if (sensor[EAST] || sensor[WEST])
-						observation[x][y] *= ((double)Math.abs(x - xPos)) / 
+						if (value != ZERO)
+							observation[x][y] *= value;
+					}
+					if (sensor[EAST] || sensor[WEST]) {
+						value = ((double)Math.abs(x - xPos)) / 
 							((double)Math.abs(x - xPos) + (double)Math.abs(y  - yPos));
+						if (value != ZERO)
+							observation[x][y] *= value;
+							
+					}
 				}
 			}
 		}
@@ -155,10 +174,10 @@ public class MyRobotStrategy extends RobotStrategy {
 		Coordinate max = getMax();
 		
 		int order = Order.GREEN_CANNON;
-		if (beliefState[max.x][max.y] > RED_THRESHOLD && redAmmo > 0) {
+		if (beliefState[max.x][max.y] > (RED_THRESHOLD - (observations.size()*IMPATIENCE)) && redAmmo > 0) {
 			order = Order.RED_CANNON;
 			redAmmo--;
-		} else if (beliefState[max.x][max.y] > YELLOW_THRESHOLD && yellowAmmo > 0) {
+		} else if (beliefState[max.x][max.y] > (YELLOW_THRESHOLD - observations.size()*IMPATIENCE) && yellowAmmo > 0) {
 			order = Order.YELLOW_CANNON;
 			yellowAmmo--;
 		}
