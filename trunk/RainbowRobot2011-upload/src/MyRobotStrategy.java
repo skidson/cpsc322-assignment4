@@ -155,10 +155,13 @@ public class MyRobotStrategy extends RobotStrategy {
 		Coordinate max = getMax();
 		
 		int order = Order.GREEN_CANNON;
-		if (beliefState[max.x][max.y] > RED_THRESHOLD && redAmmo > 0)
+		if (beliefState[max.x][max.y] > RED_THRESHOLD && redAmmo > 0) {
 			order = Order.RED_CANNON;
-		else if (beliefState[max.x][max.y] > YELLOW_THRESHOLD && yellowAmmo > 0)
+			redAmmo--;
+		} else if (beliefState[max.x][max.y] > YELLOW_THRESHOLD && yellowAmmo > 0) {
 			order = Order.YELLOW_CANNON;
+			yellowAmmo--;
+		}
 			
 		return new Order(order, max.x, max.y);
 	}
