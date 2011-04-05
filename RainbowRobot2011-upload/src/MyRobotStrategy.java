@@ -56,6 +56,8 @@ public class MyRobotStrategy extends RobotStrategy {
 		if (!sensor[0] && !sensor[1] && !sensor[2] && !sensor[3])
 			return;
 		
+		double[][] observation = observe(xPos, yPos, sensor);
+		
 		// Expand possible zone by one square. This will always be in line with us.
 		// Set this new square's belief to (1-P_STATIONARY) * adjacent belief
 //		if (sensorCache[0][NORTH])
@@ -73,83 +75,86 @@ public class MyRobotStrategy extends RobotStrategy {
 //		normalize();
 		
 		/* ************************** OBSERVATION PROBABILITY ************************** */
+		
+		
+		
 		/* ************* Rule out known boundary crossing ************* */
 		// If N-S or E-W sensor values have changed from state before last, 
 		// we know the enemy is within one row or column 
 		// Enemy has moved from north to south
-		if ((sensor[SOUTH] && observations.get(observations.size()-1)[NORTH])) {
-			for (int x = 0; x < w; x++) {
-				for (int y = 0; y < h; y++) {
-					if (y != yPos && y != yPos+1)
-						beliefState[x][y] = ZERO;
-				}
-			}
-		}
-		
-		// Enemy has moved from east to west
-		if ((sensor[WEST] && observations.get(observations.size()-1)[EAST])) {
-			for (int x = 0; x < w; x++) {
-				for (int y = 0; y < h; y++) {
-					if (x != xPos && x != xPos-1)
-						beliefState[x][y] = ZERO;
-				}
-			}
-		}
-		
-		// Enemy has moved from south to north
-		if ((sensor[NORTH] && observations.get(observations.size()-1)[SOUTH])) {
-			for (int x = 0; x < w; x++) {
-				for (int y = 0; y < h; y++) {
-					if (y != yPos && y != yPos-1)
-						beliefState[x][y] = ZERO;
-				}
-			}
-		}
-		
-		// Enemy has moved from west to east
-		if ((sensor[EAST] && observations.get(observations.size()-1)[WEST])) {
-			for (int x = 0; x < w; x++) {
-				for (int y = 0; y < h; y++) {
-					if (x != xPos && x != xPos+1)
-						beliefState[x][y] = ZERO;
-				}
-			}
-		}
-		normalize();
-		
-		/* ************* Rule out impossible quadrants ************* */
-		// If south sensor triggered, rule out north
-		if (sensor[SOUTH]) {
-			for (int x = 0; x < w; x++) {
-				for (int y = 0; y < yPos; y++)
-					beliefState[x][y] = ZERO;
-			}
-		}
-			
-		// If west sensor triggered, rule out east
-		if (sensor[WEST]) {
-			for (int x = xPos; x < w; x++) {
-				for (int y = 0; y < h; y++)
-					beliefState[x][y] = ZERO;
-			}
-		}
-		
-		// If north sensor triggered, rule out south
-		if (sensor[NORTH]) {
-			for (int x = 0; x < w; x++) {
-				for (int y = yPos; y < h; y++)
-					beliefState[x][y] = ZERO;
-			}
-		}
-		
-		// If east sensor triggered, rule out west
-		if (sensor[EAST]) {
-			for (int x = 0; x < xPos; x++) {
-				for (int y = 0; y < h; y++)
-					beliefState[x][y] = ZERO;
-			}
-		}
-		normalize();
+//		if ((sensor[SOUTH] && observations.get(observations.size()-1)[NORTH])) {
+//			for (int x = 0; x < w; x++) {
+//				for (int y = 0; y < h; y++) {
+//					if (y != yPos && y != yPos+1)
+//						beliefState[x][y] = ZERO;
+//				}
+//			}
+//		}
+//		
+//		// Enemy has moved from east to west
+//		if ((sensor[WEST] && observations.get(observations.size()-1)[EAST])) {
+//			for (int x = 0; x < w; x++) {
+//				for (int y = 0; y < h; y++) {
+//					if (x != xPos && x != xPos-1)
+//						beliefState[x][y] = ZERO;
+//				}
+//			}
+//		}
+//		
+//		// Enemy has moved from south to north
+//		if ((sensor[NORTH] && observations.get(observations.size()-1)[SOUTH])) {
+//			for (int x = 0; x < w; x++) {
+//				for (int y = 0; y < h; y++) {
+//					if (y != yPos && y != yPos-1)
+//						beliefState[x][y] = ZERO;
+//				}
+//			}
+//		}
+//		
+//		// Enemy has moved from west to east
+//		if ((sensor[EAST] && observations.get(observations.size()-1)[WEST])) {
+//			for (int x = 0; x < w; x++) {
+//				for (int y = 0; y < h; y++) {
+//					if (x != xPos && x != xPos+1)
+//						beliefState[x][y] = ZERO;
+//				}
+//			}
+//		}
+//		normalize();
+//		
+//		/* ************* Rule out impossible quadrants ************* */
+//		// If south sensor triggered, rule out north
+//		if (sensor[SOUTH]) {
+//			for (int x = 0; x < w; x++) {
+//				for (int y = 0; y < yPos; y++)
+//					beliefState[x][y] = ZERO;
+//			}
+//		}
+//			
+//		// If west sensor triggered, rule out east
+//		if (sensor[WEST]) {
+//			for (int x = xPos; x < w; x++) {
+//				for (int y = 0; y < h; y++)
+//					beliefState[x][y] = ZERO;
+//			}
+//		}
+//		
+//		// If north sensor triggered, rule out south
+//		if (sensor[NORTH]) {
+//			for (int x = 0; x < w; x++) {
+//				for (int y = yPos; y < h; y++)
+//					beliefState[x][y] = ZERO;
+//			}
+//		}
+//		
+//		// If east sensor triggered, rule out west
+//		if (sensor[EAST]) {
+//			for (int x = 0; x < xPos; x++) {
+//				for (int y = 0; y < h; y++)
+//					beliefState[x][y] = ZERO;
+//			}
+//		}
+//		normalize();
 		
 		/* ************************** TRANSITION PROBABILITY ************************** */
 		for (int x = 0; x < w; x++) {
@@ -183,6 +188,46 @@ public class MyRobotStrategy extends RobotStrategy {
 			order = Order.YELLOW_CANNON;
 			
 		return new Order(order, max.x, max.y);
+	}
+	
+	public double[][] observe(int xPos, int yPos, boolean[] sensor) {
+		double[][] observation = new double[w][h];
+		for (int x = 0; x < w; x++)
+			for (int y = 0; y < h; y++)
+				observation[x][y] = Math.abs(x - xPos) / (Math.abs(x - xPos) + Math.abs(y  - yPos));
+		
+		// If south sensor triggered, rule out north
+		if (sensor[SOUTH]) {
+			for (int x = 0; x < w; x++) {
+				for (int y = 0; y < yPos; y++)
+					observation[x][y] = ZERO;
+			}
+		}
+			
+		// If west sensor triggered, rule out east
+		if (sensor[WEST]) {
+			for (int x = xPos; x < w; x++) {
+				for (int y = 0; y < h; y++)
+					observation[x][y] = ZERO;
+			}
+		}
+		
+		// If north sensor triggered, rule out south
+		if (sensor[NORTH]) {
+			for (int x = 0; x < w; x++) {
+				for (int y = yPos; y < h; y++)
+					observation[x][y] = ZERO;
+			}
+		}
+		
+		// If east sensor triggered, rule out west
+		if (sensor[EAST]) {
+			for (int x = 0; x < xPos; x++) {
+				for (int y = 0; y < h; y++)
+					observation[x][y] = ZERO;
+			}
+		}
+		return observation;
 	}
 	
 	public void reset() {
