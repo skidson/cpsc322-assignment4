@@ -68,13 +68,7 @@ public class MyRobotStrategy extends RobotStrategy {
 			for (int y = 0; y < h; y++)
 				beliefState[x][y] = ((beliefState[x][y] * transition[x][y]) + expansion[x][y]) * observation[x][y];
 		
-		normalize();
-		for (int x = 0; x < w; x++)
-			for (int y = 0; y < h; y++)
-				if (Double.isNaN(beliefState[x][y])) {
-					beliefState= observation;
-					break;
-				}
+		normalize(observation);
 					
 		observations.add(o);
 	}
@@ -138,6 +132,29 @@ public class MyRobotStrategy extends RobotStrategy {
 			return expansion;
 		Observation cached = observations.get(observations.size()-1);
 		
+		// Look for transitions from ZERO->NON-ZERO or NON-ZERO->ZERO. Expand old
+		// region's possibilities by (1-P_STATIONARY)*P(adjacent)
+		// Traversing belief state top->bottom
+		for (int x = 1; x < w; x++) {
+			for (int y = 1; y < h; y++) {
+				double p = 1.0;
+				// "Bleed" adjacent probabilities into this one
+				if (beliefState[x][y] == ZERO && beliefState[x][y-1] != ZERO)
+					p *= beliefState[x][y-1]*(1-P_STATIONARY);
+				if (beliefState[x][y] == ZERO && beliefState[x-1][y] != ZERO)
+					p *= beliefState[x-1][y]*(1-P_STATIONARY);
+				// "Bleed" this probability into adjacent ones
+				if (beliefState[x][y-1] == ZERO && beliefState[x][y] != ZERO )
+					beliefState[x][y-1] = beliefState[x][y]*(1-P_STATIONARY);
+				if (beliefState[x][x-1] == ZERO && beliefState[x][y] != ZERO )
+					beliefState[x][x-1] = beliefState[x][y]*(1-P_STATIONARY);
+				
+				if (p != 1.0)
+					beliefState[x][y]  = p;
+			}
+		}
+		
+		
 		for (int x = 0; x < w; x++) {
 			for (int y = 0; y < h; y++) {
 				if (cached.sensor[NORTH] && cached.pos.y > 0)
@@ -183,6 +200,24 @@ public class MyRobotStrategy extends RobotStrategy {
 		}
 			
 		return new Order(order, max.x, max.y);
+	}
+	
+	private void normalize(double[][] observation) {
+		double sum = 0.0;
+		for(int x = 0; x < w; x++)
+			for(int y = 0; y < h; y++)
+				sum += beliefState[x][y];
+		
+		for(int x = 0 ; x < w; x++)
+			for(int y = 0; y < h; y++)
+				beliefState[x][y] /= sum;
+		
+		for (int x = 0; x < w; x++)
+			for (int y = 0; y < h; y++)
+				if (Double.isNaN(beliefState[x][y])) {
+					beliefState = observation;
+					break;
+				}
 	}
 	
 	public void reset() {
