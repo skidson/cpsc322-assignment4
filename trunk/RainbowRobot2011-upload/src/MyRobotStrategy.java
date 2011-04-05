@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -16,10 +17,7 @@ public class MyRobotStrategy extends RobotStrategy {
 	private static final double YELLOW_THRESHOLD = 0.65;
 	
 	private int redAmmo = 1, yellowAmmo = 2;
-	private int turn = 0;
-	
-	private List<Observation> observations;
-	
+	private List<Observation> observations = new ArrayList<Observation>();
 	/**
 	 * Rename your bot as you please. This name will show up in the GUI.
 	 */
@@ -53,24 +51,25 @@ public class MyRobotStrategy extends RobotStrategy {
 	 */
 	public void updateBeliefState(boolean[] sensor, int xPos, int yPos) {
 		// If no sensor data, keep old belief state
-//		if (!sensor[0] && !sensor[1] && !sensor[2] && !sensor[3])
-//			return;
+		if (!sensor[0] && !sensor[1] && !sensor[2] && !sensor[3])
+			return;
 		
 		// TODO transition is making walls continuously larger and eventually can't break free
-		// I likely implemented it wrong as atm it never changes...lol
+		
+		Observation o = new Observation(sensor, xPos, yPos);
 		
 		/* ************************** OBSERVATION PROBABILITY ************************** */
-		double[][] observation = getObservation(sensor, xPos, yPos);
+		double[][] observation = getObservation(o.sensor, o.pos.x, o.pos.y);
 		
 		/* ************************** TRANSITION PROBABILITY ************************** */
 		double[][] transition = getTransition();
-		
-		
+		double[][] expansion = getExpansion();
 		for (int x = 0; x < w; x++)
 			for (int y = 0; y < h; y++)
-				beliefState[x][y] *= observation[x][y] * transition[x][y];
-		normalize();
+				beliefState[x][y] = ((beliefState[x][y] * transition[x][y]) + expansion[x][y]) * observation[x][y];
 		
+		normalize();
+		observations.add(o);
 	}
 	
 	private double[][] getObservation(boolean[] sensor, int xPos, int yPos) {
@@ -85,11 +84,10 @@ public class MyRobotStrategy extends RobotStrategy {
 				else {
 					if (sensor[NORTH] || sensor[SOUTH])
 						observation[x][y] *= ((double)Math.abs(y - yPos)) / 
-						((double)Math.abs(x - xPos) + (double)Math.abs(y  - yPos));
+							((double)Math.abs(x - xPos) + (double)Math.abs(y  - yPos));
 					else if (sensor[EAST] || sensor[WEST])
 						observation[x][y] *= ((double)Math.abs(x - xPos)) / 
-						((double)Math.abs(x - xPos) + (double)Math.abs(y  - yPos));
-						
+							((double)Math.abs(x - xPos) + (double)Math.abs(y  - yPos));
 				}
 			}
 		}
@@ -101,14 +99,39 @@ public class MyRobotStrategy extends RobotStrategy {
 		for (int x = 0; x < w; x++) {
 			for (int y = 0; y < h; y++) {
 				double p = P_STATIONARY;
-				if (x == 0 || x == w-1)
-					p += (1.0-P_STATIONARY)/4.0;
-				if (y == 0 || y == h-1)
+				if (x == 0 || x == w-1 || y == 0 || y == h-1)
 					p += (1.0-P_STATIONARY)/4.0;
 				transition[x][y] = p;
 			}
 		}
 		return transition;
+	}
+	
+	// Creates a state containing only a border of possible locations
+	// based on the probability the enemy was adjacent before
+	public double[][] getExpansion() {
+		double[][] expansion = new double[w][h];
+		for (int x = 0; x < w; x++)
+			for (int y = 0; y < h; y++)
+				expansion[x][y] = ZERO;
+		
+		if (observations.isEmpty())
+			return expansion;
+		Observation cached = observations.get(observations.size()-1);
+		
+		for (int x = 0; x < w; x++) {
+			for (int y = 0; y < h; y++) {
+				if (cached.sensor[NORTH] && cached.pos.y > 0)
+					expansion[x][cached.pos.y] = beliefState[x][cached.pos.y-1]*(1-P_STATIONARY);
+				if (cached.sensor[SOUTH] && cached.pos.y < h)
+					expansion[x][cached.pos.y] = beliefState[x][cached.pos.y+1]*(1-P_STATIONARY);
+				if (cached.sensor[EAST] && cached.pos.x < w)
+					expansion[cached.pos.x][y] = beliefState[cached.pos.x+1][y]*(1-P_STATIONARY);
+				if (cached.sensor[WEST] && cached.pos.x > 0)
+					expansion[cached.pos.x][y] = beliefState[cached.pos.x-1][y]*(1-P_STATIONARY);
+			}
+		}
+		return expansion;
 	}
 	
 	private Coordinate getMax() {
@@ -147,17 +170,22 @@ public class MyRobotStrategy extends RobotStrategy {
 					beliefState[x][y] = 1.0 / ((double)(w*h));
 	}
 	
-	public String toString() {
+	public String stateToString(double[][] array) {
+		final int DIGITS = 5;
 		StringBuilder builder = new StringBuilder();
 		for (int y = 0; y < h; y++) {
 			for (int x = 0; x < w; x++) {
-				String state = Double.toString(beliefState[x][y]);
-				if (state.equals("0.0"))
-					state = "0.000";
-				else {
+				String state = Double.toString(array[x][y]);
+				if (state.equals("0.0")) {
+					for (int i = 3; i < DIGITS; i++)
+						state += "0";
+				} else {
 					try {
-						state = state.subSequence(0, 5).toString();
-					} catch (Exception e) {}
+						state = state.subSequence(0, DIGITS).toString();
+					} catch (Exception e) {
+						while(state.length() < DIGITS)
+							state += "0";
+					}
 				}
 				builder.append("[" + state + "] ");
 			}
@@ -184,28 +212,4 @@ public class MyRobotStrategy extends RobotStrategy {
 			this.sensor = sensor;
 		}
 	}
-	
-	private void debug(boolean[] sensor) {
-		StringBuilder debug = new StringBuilder("SENSOR: ");
-		if (sensor[NORTH])
-			debug.append("North ");
-		if (sensor[SOUTH])
-			debug.append("South ");
-		if (sensor[EAST])
-			debug.append("East ");
-		if (sensor[WEST])
-			debug.append("West ");
-		debug.append("\nCACHE: ");
-		if (observations.get(observations.size()-1).sensor[NORTH])
-			debug.append("North ");
-		if (observations.get(observations.size()-1).sensor[SOUTH])
-			debug.append("South ");
-		if (observations.get(observations.size()-1).sensor[EAST])
-			debug.append("East ");
-		if (observations.get(observations.size()-1).sensor[WEST])
-			debug.append("West ");
-		debug.append("\n" + toString());
-		System.out.println(debug.toString());
-	}
-	
 }
