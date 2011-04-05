@@ -1,3 +1,4 @@
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -17,9 +18,8 @@ public class MyRobotStrategy extends RobotStrategy {
 	private int redAmmo = 1, yellowAmmo = 2;
 	
 	// A cache of the last sensor reading
-	private boolean[][] sensorCache = {{false, false, false, false},
-									   {false, false, false, false}};
-	
+	private List<boolean[]> observations;
+	private Coordinate maxCache;
 	/**
 	 * Rename your bot as you please. This name will show up in the GUI.
 	 */
@@ -58,25 +58,26 @@ public class MyRobotStrategy extends RobotStrategy {
 		
 		// Expand possible zone by one square. This will always be in line with us.
 		// Set this new square's belief to (1-P_STATIONARY) * adjacent belief
-		if (sensorCache[0][NORTH])
-			for (int x = 0; x < w; x++)
-				beliefState[x][yPos] = beliefState[x][yPos-1]*(1-P_STATIONARY);
-		if (sensorCache[0][SOUTH])
-			for (int x = 0; x < w; x++)
-				beliefState[x][yPos] = beliefState[x][yPos+1]*(1-P_STATIONARY);
-		if (sensorCache[0][EAST])
-			for (int y = 0; y < h; y++)
-				beliefState[xPos][y] = beliefState[xPos+1][y]*(1-P_STATIONARY);
-		if (sensorCache[0][WEST])
-			for (int y = 0; y < h; y++)
-				beliefState[xPos][y] = beliefState[xPos-1][y]*(1-P_STATIONARY);
-		normalize();
+//		if (sensorCache[0][NORTH])
+//			for (int x = 0; x < w; x++)
+//				beliefState[x][yPos] = beliefState[x][yPos-1]*(1-P_STATIONARY);
+//		if (sensorCache[0][SOUTH])
+//			for (int x = 0; x < w; x++)
+//				beliefState[x][yPos] = beliefState[x][yPos+1]*(1-P_STATIONARY);
+//		if (sensorCache[0][EAST])
+//			for (int y = 0; y < h; y++)
+//				beliefState[xPos][y] = beliefState[xPos+1][y]*(1-P_STATIONARY);
+//		if (sensorCache[0][WEST])
+//			for (int y = 0; y < h; y++)
+//				beliefState[xPos][y] = beliefState[xPos-1][y]*(1-P_STATIONARY);
+//		normalize();
 		
+		/* ************************** OBSERVATION PROBABILITY ************************** */
 		/* ************* Rule out known boundary crossing ************* */
 		// If N-S or E-W sensor values have changed from state before last, 
 		// we know the enemy is within one row or column 
 		// Enemy has moved from north to south
-		if ((sensor[SOUTH] && sensorCache[1][NORTH])) {
+		if ((sensor[SOUTH] && observations.get(observations.size()-1)[NORTH])) {
 			for (int x = 0; x < w; x++) {
 				for (int y = 0; y < h; y++) {
 					if (y != yPos && y != yPos+1)
@@ -86,7 +87,7 @@ public class MyRobotStrategy extends RobotStrategy {
 		}
 		
 		// Enemy has moved from east to west
-		if ((sensor[WEST] && sensorCache[1][EAST])) {
+		if ((sensor[WEST] && observations.get(observations.size()-1)[EAST])) {
 			for (int x = 0; x < w; x++) {
 				for (int y = 0; y < h; y++) {
 					if (x != xPos && x != xPos-1)
@@ -96,7 +97,7 @@ public class MyRobotStrategy extends RobotStrategy {
 		}
 		
 		// Enemy has moved from south to north
-		if ((sensor[NORTH] && sensorCache[1][SOUTH])) {
+		if ((sensor[NORTH] && observations.get(observations.size()-1)[SOUTH])) {
 			for (int x = 0; x < w; x++) {
 				for (int y = 0; y < h; y++) {
 					if (y != yPos && y != yPos-1)
@@ -106,7 +107,7 @@ public class MyRobotStrategy extends RobotStrategy {
 		}
 		
 		// Enemy has moved from west to east
-		if ((sensor[EAST] && sensorCache[1][WEST])) {
+		if ((sensor[EAST] && observations.get(observations.size()-1)[WEST])) {
 			for (int x = 0; x < w; x++) {
 				for (int y = 0; y < h; y++) {
 					if (x != xPos && x != xPos+1)
@@ -150,7 +151,7 @@ public class MyRobotStrategy extends RobotStrategy {
 		}
 		normalize();
 		
-		/* ************* TRANSITION PROBABILITY ************* */
+		/* ************************** TRANSITION PROBABILITY ************************** */
 		for (int x = 0; x < w; x++) {
 			for (int y = 0; y < h; y++) {
 				if (x != xPos && y != yPos) {
@@ -164,12 +165,13 @@ public class MyRobotStrategy extends RobotStrategy {
 			}
 		}
 		normalize();
-	
-		// Cycle the sensor cache
-		sensorCache[1] = sensorCache[0];
-		sensorCache[0] = sensor;
+		
+		// Cycle the caches
+		observations.add(sensor);
+		maxCache = getMax();
 		
 	}
+	
 	
 	public Order giveOrder() {
 		Coordinate max = getMax();
