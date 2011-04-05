@@ -55,11 +55,36 @@ public class MyRobotStrategy extends RobotStrategy {
 		if (!sensor[0] && !sensor[1] && !sensor[2] && !sensor[3])
 			return;
 		
-		// Populate remaining states with new base probability
-		
+		// Expand possible zone by one square. This will always be in line with us.
+		// Set this new square's belief to (1-P_STATIONARY) * adjacent belief
+		if (sensorCache[0][NORTH])
+			for (int x = 0; x < w; x++)
+				beliefState[x][yPos] = beliefState[x][yPos-1]*(1-P_STATIONARY);
+		if (sensorCache[0][SOUTH])
+			for (int x = 0; x < w; x++)
+				beliefState[x][yPos] = beliefState[x][yPos+1]*(1-P_STATIONARY);
+		if (sensorCache[0][EAST])
+			for (int y = 0; y < h; y++)
+				beliefState[xPos][y] = beliefState[xPos+1][y]*(1-P_STATIONARY);
+		if (sensorCache[0][WEST])
+			for (int y = 0; y < h; y++)
+				beliefState[xPos][y] = beliefState[xPos-1][y]*(1-P_STATIONARY);
+		normalize();
 		
 		// OBSERVATION PROBABILITY
-		
+		for (int x = 0; x < w; x++) {
+			for (int y = 0; y < h; y++) {
+				if (x != xPos && y != yPos) {
+					double p = P_STATIONARY;
+					if (x == 0 || x == w-1)
+						p += (1.0-P_STATIONARY)/4.0;
+					if (y == 0 || y == h-1)
+						p += (1.0-P_STATIONARY)/4.0;
+					beliefState[x][y] *= p;
+				}
+			}
+		}
+		normalize();
 		
 		/* ************* Rule out known boundary crossing ************* */
 		// If N-S or E-W sensor values have changed from state before last, 
@@ -103,19 +128,17 @@ public class MyRobotStrategy extends RobotStrategy {
 				}
 			}
 		}
-		
+		normalize();
 		
 		/* ************* Rule out impossible quadrants ************* */
 		// If south sensor triggered, rule out north
 		if (sensor[SOUTH]) {
 			for (int x = 0; x < w; x++) {
-				for (int y = 0; y < yPos; y++) {
-					if (beliefState[x][y] != ZERO)
-						beliefState[x][y] = ZERO;
-				}
+				for (int y = 0; y < yPos; y++)
+					beliefState[x][y] = ZERO;
 			}
 		}
-		
+			
 		// If west sensor triggered, rule out east
 		if (sensor[WEST]) {
 			for (int x = xPos; x < w; x++) {
@@ -139,8 +162,9 @@ public class MyRobotStrategy extends RobotStrategy {
 					beliefState[x][y] = ZERO;
 			}
 		}
-		
 		normalize();
+		
+		
 	
 		// Cycle the sensor cache
 		sensorCache[1] = sensorCache[0];
