@@ -24,7 +24,8 @@ public class MyRobotStrategy extends RobotStrategy {
 	 * Rename your bot as you please. This name will show up in the GUI.
 	 */
 	public String getName() { 
-		return "Sir Killalot"; 
+		// Ideas: Sir Killalot, Aimbot, Maphack
+		return "Aimbot"; 
 	}
 
 	/** 
@@ -69,21 +70,6 @@ public class MyRobotStrategy extends RobotStrategy {
 		if (sensorCache[0][WEST])
 			for (int y = 0; y < h; y++)
 				beliefState[xPos][y] = beliefState[xPos-1][y]*(1-P_STATIONARY);
-		normalize();
-		
-		// TRANSITION PROBABILITY
-		for (int x = 0; x < w; x++) {
-			for (int y = 0; y < h; y++) {
-				if (x != xPos && y != yPos) {
-					double p = P_STATIONARY;
-					if (x == 0 || x == w-1)
-						p += (1.0-P_STATIONARY)/4.0;
-					if (y == 0 || y == h-1)
-						p += (1.0-P_STATIONARY)/4.0;
-					beliefState[x][y] *= p;
-				}
-			}
-		}
 		normalize();
 		
 		/* ************* Rule out known boundary crossing ************* */
@@ -164,7 +150,20 @@ public class MyRobotStrategy extends RobotStrategy {
 		}
 		normalize();
 		
-		
+		/* ************* TRANSITION PROBABILITY ************* */
+		for (int x = 0; x < w; x++) {
+			for (int y = 0; y < h; y++) {
+				if (x != xPos && y != yPos) {
+					double p = P_STATIONARY;
+					if (x == 0 || x == w-1)
+						p += (1.0-P_STATIONARY)/4.0;
+					if (y == 0 || y == h-1)
+						p += (1.0-P_STATIONARY)/4.0;
+					beliefState[x][y] *= p;
+				}
+			}
+		}
+		normalize();
 	
 		// Cycle the sensor cache
 		sensorCache[1] = sensorCache[0];
@@ -173,23 +172,15 @@ public class MyRobotStrategy extends RobotStrategy {
 	}
 	
 	public Order giveOrder() {
-		int max_X =  0, max_Y = 0;
-		for (int x = 0; x < w; x++) {
-			for (int y = 0; y < h; y++) {
-				if (beliefState[x][y] > beliefState[max_X][max_Y]) {
-					max_X = x;
-					max_Y = y;
-				}
-			}
-		}
+		Coordinate max = getMax();
 		
 		int order = Order.GREEN_CANNON;
-		if (beliefState[max_X][max_Y] > RED_THRESHOLD && redAmmo > 0)
+		if (beliefState[max.x][max.y] > RED_THRESHOLD && redAmmo > 0)
 			order = Order.RED_CANNON;
-		else if (beliefState[max_X][max_Y] > YELLOW_THRESHOLD && yellowAmmo > 0)
+		else if (beliefState[max.x][max.y] > YELLOW_THRESHOLD && yellowAmmo > 0)
 			order = Order.YELLOW_CANNON;
 			
-		return new Order(order, max_X, max_Y);
+		return new Order(order, max.x, max.y);
 	}
 	
 	public void reset() {
@@ -207,6 +198,28 @@ public class MyRobotStrategy extends RobotStrategy {
 			builder.append("\n");
 		}
 		return builder.toString();
+	}
+	
+	private Coordinate getMax() {
+		int max_X =  0, max_Y = 0;
+		for (int x = 0; x < w; x++) {
+			for (int y = 0; y < h; y++) {
+				if (beliefState[x][y] > beliefState[max_X][max_Y]) {
+					max_X = x;
+					max_Y = y;
+				}
+			}
+		}
+		return new Coordinate(max_X, max_Y);
+	}
+	
+	private class Coordinate {
+		public int x, y;
+		
+		public Coordinate(int x, int y) {
+			this.x = x;
+			this.y = y;
+		}
 	}
 	
 }
