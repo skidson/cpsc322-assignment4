@@ -12,14 +12,14 @@ public class MyRobotStrategy extends RobotStrategy {
 	
 	private static final double ZERO = 0.0;
 	private static final double P_STATIONARY = 0.52;
-	private static final double RED_THRESHOLD = 0.85;
-	private static final double YELLOW_THRESHOLD = 0.75;
+	private static final double RED_THRESHOLD = 0.75;
+	private static final double YELLOW_THRESHOLD = 0.65;
 	
 	private int redAmmo = 1, yellowAmmo = 2;
+	private int turn = 0;
 	
-	// A cache of the last sensor reading
-	private List<boolean[]> observations;
-	private Coordinate maxCache;
+	private List<Observation> observations;
+	
 	/**
 	 * Rename your bot as you please. This name will show up in the GUI.
 	 */
@@ -53,130 +53,80 @@ public class MyRobotStrategy extends RobotStrategy {
 	 */
 	public void updateBeliefState(boolean[] sensor, int xPos, int yPos) {
 		// If no sensor data, keep old belief state
-		if (!sensor[0] && !sensor[1] && !sensor[2] && !sensor[3])
-			return;
+//		if (!sensor[0] && !sensor[1] && !sensor[2] && !sensor[3])
+//			return;
 		
-		double[][] observation = observe(xPos, yPos, sensor);
-		
-		// Expand possible zone by one square. This will always be in line with us.
-		// Set this new square's belief to (1-P_STATIONARY) * adjacent belief
-//		if (sensorCache[0][NORTH])
-//			for (int x = 0; x < w; x++)
-//				beliefState[x][yPos] = beliefState[x][yPos-1]*(1-P_STATIONARY);
-//		if (sensorCache[0][SOUTH])
-//			for (int x = 0; x < w; x++)
-//				beliefState[x][yPos] = beliefState[x][yPos+1]*(1-P_STATIONARY);
-//		if (sensorCache[0][EAST])
-//			for (int y = 0; y < h; y++)
-//				beliefState[xPos][y] = beliefState[xPos+1][y]*(1-P_STATIONARY);
-//		if (sensorCache[0][WEST])
-//			for (int y = 0; y < h; y++)
-//				beliefState[xPos][y] = beliefState[xPos-1][y]*(1-P_STATIONARY);
-//		normalize();
+		// TODO transition is making walls continuously larger and eventually can't break free
+		// I likely implemented it wrong as atm it never changes...lol
 		
 		/* ************************** OBSERVATION PROBABILITY ************************** */
-		
-		
-		
-		/* ************* Rule out known boundary crossing ************* */
-		// If N-S or E-W sensor values have changed from state before last, 
-		// we know the enemy is within one row or column 
-		// Enemy has moved from north to south
-//		if ((sensor[SOUTH] && observations.get(observations.size()-1)[NORTH])) {
-//			for (int x = 0; x < w; x++) {
-//				for (int y = 0; y < h; y++) {
-//					if (y != yPos && y != yPos+1)
-//						beliefState[x][y] = ZERO;
-//				}
-//			}
-//		}
-//		
-//		// Enemy has moved from east to west
-//		if ((sensor[WEST] && observations.get(observations.size()-1)[EAST])) {
-//			for (int x = 0; x < w; x++) {
-//				for (int y = 0; y < h; y++) {
-//					if (x != xPos && x != xPos-1)
-//						beliefState[x][y] = ZERO;
-//				}
-//			}
-//		}
-//		
-//		// Enemy has moved from south to north
-//		if ((sensor[NORTH] && observations.get(observations.size()-1)[SOUTH])) {
-//			for (int x = 0; x < w; x++) {
-//				for (int y = 0; y < h; y++) {
-//					if (y != yPos && y != yPos-1)
-//						beliefState[x][y] = ZERO;
-//				}
-//			}
-//		}
-//		
-//		// Enemy has moved from west to east
-//		if ((sensor[EAST] && observations.get(observations.size()-1)[WEST])) {
-//			for (int x = 0; x < w; x++) {
-//				for (int y = 0; y < h; y++) {
-//					if (x != xPos && x != xPos+1)
-//						beliefState[x][y] = ZERO;
-//				}
-//			}
-//		}
-//		normalize();
-//		
-//		/* ************* Rule out impossible quadrants ************* */
-//		// If south sensor triggered, rule out north
-//		if (sensor[SOUTH]) {
-//			for (int x = 0; x < w; x++) {
-//				for (int y = 0; y < yPos; y++)
-//					beliefState[x][y] = ZERO;
-//			}
-//		}
-//			
-//		// If west sensor triggered, rule out east
-//		if (sensor[WEST]) {
-//			for (int x = xPos; x < w; x++) {
-//				for (int y = 0; y < h; y++)
-//					beliefState[x][y] = ZERO;
-//			}
-//		}
-//		
-//		// If north sensor triggered, rule out south
-//		if (sensor[NORTH]) {
-//			for (int x = 0; x < w; x++) {
-//				for (int y = yPos; y < h; y++)
-//					beliefState[x][y] = ZERO;
-//			}
-//		}
-//		
-//		// If east sensor triggered, rule out west
-//		if (sensor[EAST]) {
-//			for (int x = 0; x < xPos; x++) {
-//				for (int y = 0; y < h; y++)
-//					beliefState[x][y] = ZERO;
-//			}
-//		}
-//		normalize();
+		double[][] observation = getObservation(sensor, xPos, yPos);
 		
 		/* ************************** TRANSITION PROBABILITY ************************** */
-		for (int x = 0; x < w; x++) {
-			for (int y = 0; y < h; y++) {
-				if (x != xPos && y != yPos) {
-					double p = P_STATIONARY;
-					if (x == 0 || x == w-1)
-						p += (1.0-P_STATIONARY)/4.0;
-					if (y == 0 || y == h-1)
-						p += (1.0-P_STATIONARY)/4.0;
-					beliefState[x][y] *= p;
-				}
-			}
-		}
-		normalize();
+		double[][] transition = getTransition();
 		
-		// Cycle the caches
-		observations.add(sensor);
-		maxCache = getMax();
+		
+		for (int x = 0; x < w; x++)
+			for (int y = 0; y < h; y++)
+				beliefState[x][y] *= observation[x][y] * transition[x][y];
+		normalize();
 		
 	}
 	
+	private double[][] getObservation(boolean[] sensor, int xPos, int yPos) {
+		double[][] observation = new double[w][h];
+		for (int x = 0; x < w; x++) {
+			for (int y = 0; y < h; y++) {
+				observation[x][y] = 1.0;
+				if ((sensor[WEST] && x >= xPos) || (sensor[EAST] && x <= xPos) ||
+					(sensor[SOUTH] && y <= yPos) || (sensor[NORTH] && y >= yPos) ||
+					(x == xPos && y == yPos))
+						observation[x][y] = ZERO;
+				else {
+					if (sensor[NORTH] || sensor[SOUTH])
+						observation[x][y] *= ((double)Math.abs(y - yPos)) / 
+						((double)Math.abs(x - xPos) + (double)Math.abs(y  - yPos));
+					else if (sensor[EAST] || sensor[WEST])
+						observation[x][y] *= ((double)Math.abs(x - xPos)) / 
+						((double)Math.abs(x - xPos) + (double)Math.abs(y  - yPos));
+						
+				}
+			}
+		}
+		return observation;
+	}
+	
+	public double[][] getTransition() {
+		double[][] transition = new double[w][h];
+		for (int x = 0; x < w; x++) {
+			for (int y = 0; y < h; y++) {
+				double p = P_STATIONARY;
+				if (x == 0 || x == w-1)
+					p += (1.0-P_STATIONARY)/4.0;
+				if (y == 0 || y == h-1)
+					p += (1.0-P_STATIONARY)/4.0;
+				transition[x][y] = p;
+			}
+		}
+		return transition;
+	}
+	
+	private Coordinate getMax() {
+		int max_X =  0, max_Y = 0;
+		for (int x = 0; x < w; x++) {
+			for (int y = 0; y < h; y++) {
+				if (beliefState[x][y] > beliefState[max_X][max_Y]) {
+					max_X = x;
+					max_Y = y;
+				} else if (beliefState[x][y] == beliefState[max_X][max_Y] &&
+						rand.nextDouble() > 0.5) {
+					max_X = x;
+					max_Y = y;
+				}
+			}
+		}
+		return new Coordinate(max_X, max_Y);
+	}
 	
 	public Order giveOrder() {
 		Coordinate max = getMax();
@@ -190,46 +140,6 @@ public class MyRobotStrategy extends RobotStrategy {
 		return new Order(order, max.x, max.y);
 	}
 	
-	public double[][] observe(int xPos, int yPos, boolean[] sensor) {
-		double[][] observation = new double[w][h];
-		for (int x = 0; x < w; x++)
-			for (int y = 0; y < h; y++)
-				observation[x][y] = Math.abs(x - xPos) / (Math.abs(x - xPos) + Math.abs(y  - yPos));
-		
-		// If south sensor triggered, rule out north
-		if (sensor[SOUTH]) {
-			for (int x = 0; x < w; x++) {
-				for (int y = 0; y < yPos; y++)
-					observation[x][y] = ZERO;
-			}
-		}
-			
-		// If west sensor triggered, rule out east
-		if (sensor[WEST]) {
-			for (int x = xPos; x < w; x++) {
-				for (int y = 0; y < h; y++)
-					observation[x][y] = ZERO;
-			}
-		}
-		
-		// If north sensor triggered, rule out south
-		if (sensor[NORTH]) {
-			for (int x = 0; x < w; x++) {
-				for (int y = yPos; y < h; y++)
-					observation[x][y] = ZERO;
-			}
-		}
-		
-		// If east sensor triggered, rule out west
-		if (sensor[EAST]) {
-			for (int x = 0; x < xPos; x++) {
-				for (int y = 0; y < h; y++)
-					observation[x][y] = ZERO;
-			}
-		}
-		return observation;
-	}
-	
 	public void reset() {
 		for (int x = 0; x < w; x++)
 			for (int y = 0; y < h; y++)
@@ -240,24 +150,20 @@ public class MyRobotStrategy extends RobotStrategy {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		for (int y = 0; y < h; y++) {
-			for (int x = 0; x < w; x++)
-				builder.append("[" + (float)beliefState[x][y] + "] ");
+			for (int x = 0; x < w; x++) {
+				String state = Double.toString(beliefState[x][y]);
+				if (state.equals("0.0"))
+					state = "0.000";
+				else {
+					try {
+						state = state.subSequence(0, 5).toString();
+					} catch (Exception e) {}
+				}
+				builder.append("[" + state + "] ");
+			}
 			builder.append("\n");
 		}
 		return builder.toString();
-	}
-	
-	private Coordinate getMax() {
-		int max_X =  0, max_Y = 0;
-		for (int x = 0; x < w; x++) {
-			for (int y = 0; y < h; y++) {
-				if (beliefState[x][y] > beliefState[max_X][max_Y]) {
-					max_X = x;
-					max_Y = y;
-				}
-			}
-		}
-		return new Coordinate(max_X, max_Y);
 	}
 	
 	private class Coordinate {
@@ -267,6 +173,39 @@ public class MyRobotStrategy extends RobotStrategy {
 			this.x = x;
 			this.y = y;
 		}
+	}
+	
+	private class Observation {
+		public Coordinate pos;
+		public boolean[] sensor;
+		
+		public Observation(boolean[] sensor, int x, int y) {
+			this.pos = new Coordinate(x, y);
+			this.sensor = sensor;
+		}
+	}
+	
+	private void debug(boolean[] sensor) {
+		StringBuilder debug = new StringBuilder("SENSOR: ");
+		if (sensor[NORTH])
+			debug.append("North ");
+		if (sensor[SOUTH])
+			debug.append("South ");
+		if (sensor[EAST])
+			debug.append("East ");
+		if (sensor[WEST])
+			debug.append("West ");
+		debug.append("\nCACHE: ");
+		if (observations.get(observations.size()-1).sensor[NORTH])
+			debug.append("North ");
+		if (observations.get(observations.size()-1).sensor[SOUTH])
+			debug.append("South ");
+		if (observations.get(observations.size()-1).sensor[EAST])
+			debug.append("East ");
+		if (observations.get(observations.size()-1).sensor[WEST])
+			debug.append("West ");
+		debug.append("\n" + toString());
+		System.out.println(debug.toString());
 	}
 	
 }
