@@ -52,8 +52,8 @@ public class MyRobotStrategy extends RobotStrategy {
 	 */
 	public void updateBeliefState(boolean[] sensor, int xPos, int yPos) {
 		// If no sensor data, keep old belief state
-		if (!sensor[0] && !sensor[1] && !sensor[2] && !sensor[3])
-			return;
+//		if (!sensor[0] && !sensor[1] && !sensor[2] && !sensor[3])
+//			return;
 		
 		Observation o = new Observation(sensor, xPos, yPos);
 		
@@ -68,8 +68,15 @@ public class MyRobotStrategy extends RobotStrategy {
 			for (int y = 0; y < h; y++)
 				beliefState[x][y] = ((beliefState[x][y] * transition[x][y]) + expansion[x][y]) * observation[x][y];
 		
-		normalize(observation);
-					
+		beliefState = normalize(beliefState);
+		
+		for (int x = 0; x < w; x++)
+			for (int y = 0; y < h; y++)
+				if (Double.isNaN(beliefState[x][y])) {
+					beliefState = observation;
+					break;
+				}
+		
 		observations.add(o);
 	}
 	
@@ -112,7 +119,9 @@ public class MyRobotStrategy extends RobotStrategy {
 		for (int x = 0; x < w; x++) {
 			for (int y = 0; y < h; y++) {
 				double p = P_STATIONARY;
-				if (x == 0 || x == w-1 || y == 0 || y == h-1)
+				if (x == 0 || x == w-1)
+					p += (1.0-P_STATIONARY)/4.0;
+				if (y == 0 || y == h-1)
 					p += (1.0-P_STATIONARY)/4.0;
 				transition[x][y] = p;
 			}
@@ -130,7 +139,6 @@ public class MyRobotStrategy extends RobotStrategy {
 		
 		if (observations.isEmpty())
 			return expansion;
-		Observation cached = observations.get(observations.size()-1);
 		
 		// Look for transitions from ZERO->NON-ZERO or NON-ZERO->ZERO. Expand old
 		// region's possibilities by (1-P_STATIONARY)*P(adjacent)
@@ -145,26 +153,12 @@ public class MyRobotStrategy extends RobotStrategy {
 					p *= beliefState[x-1][y]*(1-P_STATIONARY);
 				// "Bleed" this probability into adjacent ones
 				if (beliefState[x][y-1] == ZERO && beliefState[x][y] != ZERO )
-					beliefState[x][y-1] = beliefState[x][y]*(1-P_STATIONARY);
+					expansion[x][y-1] = beliefState[x][y]*(1-P_STATIONARY);
 				if (beliefState[x][x-1] == ZERO && beliefState[x][y] != ZERO )
-					beliefState[x][x-1] = beliefState[x][y]*(1-P_STATIONARY);
+					expansion[x][x-1] = beliefState[x][y]*(1-P_STATIONARY);
 				
 				if (p != 1.0)
-					beliefState[x][y]  = p;
-			}
-		}
-		
-		
-		for (int x = 0; x < w; x++) {
-			for (int y = 0; y < h; y++) {
-				if (cached.sensor[NORTH] && cached.pos.y > 0)
-					expansion[x][cached.pos.y] = beliefState[x][cached.pos.y-1]*(1-P_STATIONARY);
-				if (cached.sensor[SOUTH] && cached.pos.y < h)
-					expansion[x][cached.pos.y] = beliefState[x][cached.pos.y+1]*(1-P_STATIONARY);
-				if (cached.sensor[EAST] && cached.pos.x < w)
-					expansion[cached.pos.x][y] = beliefState[cached.pos.x+1][y]*(1-P_STATIONARY);
-				if (cached.sensor[WEST] && cached.pos.x > 0)
-					expansion[cached.pos.x][y] = beliefState[cached.pos.x-1][y]*(1-P_STATIONARY);
+					expansion[x][y] = p;
 			}
 		}
 		return expansion;
@@ -202,22 +196,17 @@ public class MyRobotStrategy extends RobotStrategy {
 		return new Order(order, max.x, max.y);
 	}
 	
-	private void normalize(double[][] observation) {
+	private double[][] normalize(double[][] belief) {
+		double[][] state = belief.clone();
 		double sum = 0.0;
 		for(int x = 0; x < w; x++)
 			for(int y = 0; y < h; y++)
-				sum += beliefState[x][y];
+				sum += state[x][y];
 		
 		for(int x = 0 ; x < w; x++)
 			for(int y = 0; y < h; y++)
-				beliefState[x][y] /= sum;
-		
-		for (int x = 0; x < w; x++)
-			for (int y = 0; y < h; y++)
-				if (Double.isNaN(beliefState[x][y])) {
-					beliefState = observation;
-					break;
-				}
+				state[x][y] /= sum;
+		return state;
 	}
 	
 	public void reset() {
