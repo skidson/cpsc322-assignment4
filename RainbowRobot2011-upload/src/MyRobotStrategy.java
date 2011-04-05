@@ -71,7 +71,7 @@ public class MyRobotStrategy extends RobotStrategy {
 				beliefState[xPos][y] = beliefState[xPos-1][y]*(1-P_STATIONARY);
 		normalize();
 		
-		// OBSERVATION PROBABILITY
+		// TRANSITION PROBABILITY
 		for (int x = 0; x < w; x++) {
 			for (int y = 0; y < h; y++) {
 				if (x != xPos && y != yPos) {
