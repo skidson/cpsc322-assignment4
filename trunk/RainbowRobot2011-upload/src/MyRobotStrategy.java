@@ -15,6 +15,7 @@ public class MyRobotStrategy extends RobotStrategy {
 	private static final double P_STATIONARY = 0.52;
 	private static final double RED_THRESHOLD = 0.75;
 	private static final double YELLOW_THRESHOLD = 0.65;
+	
 	private static final double IMPATIENCE = 0.01;
 	
 	private int redAmmo = 1, yellowAmmo = 2;
@@ -76,7 +77,8 @@ public class MyRobotStrategy extends RobotStrategy {
 					beliefState = observation;
 					break;
 				}
-		
+//		System.out.println(stateToString(getObservation(new boolean[] {false, false, true, false}, 3, 5)));
+//		System.out.println(stateToString(getObservation(new boolean[] {false, false, true, true}, 3, 5)));
 		observations.add(o);
 	}
 	
@@ -94,7 +96,7 @@ public class MyRobotStrategy extends RobotStrategy {
 					(x == xPos && y == yPos))
 						observation[x][y] = ZERO;
 				else {
-					double value;
+					double value = 0.0;
 					if (sensor[NORTH] || sensor[SOUTH]) {
 						value = ((double)Math.abs(y - yPos)) / 
 							((double)Math.abs(x - xPos) + (double)Math.abs(y  - yPos));
@@ -106,8 +108,8 @@ public class MyRobotStrategy extends RobotStrategy {
 							((double)Math.abs(x - xPos) + (double)Math.abs(y  - yPos));
 						if (value != ZERO)
 							observation[x][y] *= value;
-							
 					}
+					
 				}
 			}
 		}
@@ -124,6 +126,16 @@ public class MyRobotStrategy extends RobotStrategy {
 				if (y == 0 || y == h-1)
 					p += (1.0-P_STATIONARY)/4.0;
 				transition[x][y] = p;
+			}
+		}
+		return transition;
+	}
+	
+	public double[][] getSumTransition() {
+		double[][] transition = new double[w][h];
+		for (int x = 0; x < w; x++) {
+			for (int y = 0; y < h; y++) {
+				
 			}
 		}
 		return transition;
@@ -154,8 +166,8 @@ public class MyRobotStrategy extends RobotStrategy {
 				// "Bleed" this probability into adjacent ones
 				if (beliefState[x][y-1] == ZERO && beliefState[x][y] != ZERO )
 					expansion[x][y-1] = beliefState[x][y]*(1-P_STATIONARY);
-				if (beliefState[x][x-1] == ZERO && beliefState[x][y] != ZERO )
-					expansion[x][x-1] = beliefState[x][y]*(1-P_STATIONARY);
+				if (beliefState[x-1][y] == ZERO && beliefState[x][y] != ZERO )
+					expansion[x-1][y] = beliefState[x][y]*(1-P_STATIONARY);
 				
 				if (p != 1.0)
 					expansion[x][y] = p;
