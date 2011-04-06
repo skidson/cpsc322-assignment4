@@ -79,8 +79,8 @@ public class MyRobotStrategy extends RobotStrategy {
 					beliefState = observation;
 					break;
 				}
+//		System.out.println(stateToString(getSumTransition()));
 //		System.out.println(stateToString(getObservation(new boolean[] {false, false, true, false}, 3, 5)));
-//		System.out.println(stateToString(getObservation(new boolean[] {false, false, true, true}, 3, 5)));
 		observations.add(o);
 	}
 	
@@ -137,7 +137,7 @@ public class MyRobotStrategy extends RobotStrategy {
 		double[][] transition = new double[w][h];
 		for (int x = 0; x < w; x++) {
 			for (int y = 0; y < h; y++) {
-				transition[x][y] = ZERO;
+				transition[x][y] = beliefState[x][y]*P_STATIONARY;
 				// "Bleed" into each square, each adjacent square's probability * 
 				// the probability the enemy will move to this one
 				if (x > 0)
