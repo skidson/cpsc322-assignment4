@@ -13,12 +13,26 @@ public class MyRobotStrategy extends RobotStrategy {
 	
 	private static final double ZERO = 0.0;
 	private static final double P_STATIONARY = 0.52;
-	private static final double RED_THRESHOLD = 0.75;
-	private static final double YELLOW_THRESHOLD = 0.65;
 	
-	private static final double IMPATIENCE = 0.01;
-	private static final int HISTORY = 10;
+	private static double IMPATIENCE = 0.06;
+	private static double RED_THRESHOLD = 0.61;
+	private static double YELLOW_THRESHOLD = 0.65;
 	
+//	IMPATIENCE = 0.09
+//	RED_THRESHOLD = 0.5699999999999998
+//	YELLOW_THRESHOLD = 0.65
+//	10000/10000 games played; 56.158690176322416% wins
+	
+//	IMPATIENCE = 0.060000000000000005
+//	RED_THRESHOLD = 0.5999999999999999
+//	YELLOW_THRESHOLD = 0.65
+//	10000/10000 games played; 56.056477582363144% wins
+	
+//	IMPATIENCE = 0.060000000000000005
+//	RED_THRESHOLD = 0.6099999999999999
+//	YELLOW_THRESHOLD = 0.65
+//	10000/10000 games played; 56.343330405320614% wins	
+
 	private int redAmmo = 1, yellowAmmo = 2;
 	private List<Observation> observations = new ArrayList<Observation>();
 	/**
@@ -27,6 +41,29 @@ public class MyRobotStrategy extends RobotStrategy {
 	public String getName() { 
 		// Ideas: Sir Killalot, Aimbot, Maphack
 		return "Aimbot"; 
+	}
+	
+	public static void main(String args[]) {
+		YELLOW_THRESHOLD = 0.45;
+		for (int i = 0; i < 20; i++) {
+			RED_THRESHOLD = 0.50;
+			for (int j = 0; j < 20; j++) {
+				IMPATIENCE = 0.00;
+				for (int k = 0; k < 20; k++) {
+					System.out.println("\nIMPATIENCE = " + IMPATIENCE);
+					System.out.println("RED_THRESHOLD = " + RED_THRESHOLD);
+					System.out.println("YELLOW_THRESHOLD = " + YELLOW_THRESHOLD);
+					try {
+						RobotTester.main(new String[] {""});
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+					IMPATIENCE += 0.01;
+				}
+				RED_THRESHOLD -= 0.01;
+			}
+			YELLOW_THRESHOLD -= 0.01;
+		}
 	}
 
 	/** 
@@ -63,7 +100,7 @@ public class MyRobotStrategy extends RobotStrategy {
 		double[][] observation = getObservation(o.sensor, o.pos.x, o.pos.y);
 		
 		/* ************************** TRANSITION PROBABILITY ************************** */
-		double[][] transition = getSumTransition();
+		double[][] transition = getTransition();
 		
 		for (int x = 0; x < w; x++)
 			for (int y = 0; y < h; y++)
@@ -77,8 +114,10 @@ public class MyRobotStrategy extends RobotStrategy {
 					beliefState = observation;
 					break;
 				}
+		
 //		System.out.println(stateToString(getSumTransition()));
 //		System.out.println(stateToString(getObservation(new boolean[] {false, false, true, false}, 5, 5)));
+		
 		observations.add(o);
 	}
 	
@@ -109,12 +148,12 @@ public class MyRobotStrategy extends RobotStrategy {
 						if (value != ZERO)
 							observation[x][y] *= value;
 					}
-					int count = 0;
-					for(boolean fire : sensor)
-						if (fire)
-							count++;
-					if (count > 1)
-						observation[x][y] *= 2;
+//					int count = 0;
+//					for(boolean fire : sensor)
+//						if (fire)
+//							count++;
+//					if (count > 1)
+//						observation[x][y] *= 2;
 				}
 			}
 		}
@@ -122,21 +161,6 @@ public class MyRobotStrategy extends RobotStrategy {
 	}
 	
 	public double[][] getTransition() {
-		double[][] transition = new double[w][h];
-		for (int x = 0; x < w; x++) {
-			for (int y = 0; y < h; y++) {
-				double p = P_STATIONARY;
-				if (x == 0 || x == w-1)
-					p += (1.0-P_STATIONARY)/4.0;
-				if (y == 0 || y == h-1)
-					p += (1.0-P_STATIONARY)/4.0;
-				transition[x][y] = p;
-			}
-		}
-		return transition;
-	}
-	
-	public double[][] getSumTransition() {
 		double[][] transition = new double[w][h];
 		for (int x = 0; x < w; x++) {
 			for (int y = 0; y < h; y++) {
@@ -149,51 +173,16 @@ public class MyRobotStrategy extends RobotStrategy {
 				// "Bleed" into each square, each adjacent square's probability * 
 				// the probability the enemy will move to this one
 				if (x > 0)
-					transition[x][y] += ((1-P_STATIONARY)/4.0)*beliefState[x-1][y];
+					transition[x][y] += ((1.0-P_STATIONARY)/4.0)*beliefState[x-1][y];
 				if (y > 0)
-					transition[x][y] += ((1-P_STATIONARY)/4.0)*beliefState[x][y-1];
+					transition[x][y] += ((1.0-P_STATIONARY)/4.0)*beliefState[x][y-1];
 				if (y < h-1)
-					transition[x][y] += ((1-P_STATIONARY)/4.0)*beliefState[x][y+1];
+					transition[x][y] += ((1.0-P_STATIONARY)/4.0)*beliefState[x][y+1];
 				if (x < w-1)
-					transition[x][y] += ((1-P_STATIONARY)/4.0)*beliefState[x+1][y];
+					transition[x][y] += ((1.0-P_STATIONARY)/4.0)*beliefState[x+1][y];
 			}
 		}
 		return transition;
-	}
-	
-	// Creates a state containing only a border of possible locations
-	// based on the probability the enemy was adjacent before
-	public double[][] getExpansion() {
-		double[][] expansion = new double[w][h];
-		for (int x = 0; x < w; x++)
-			for (int y = 0; y < h; y++)
-				expansion[x][y] = ZERO;
-		
-		if (observations.isEmpty())
-			return expansion;
-		
-		// Look for transitions from ZERO->NON-ZERO or NON-ZERO->ZERO. Expand old
-		// region's possibilities by (1-P_STATIONARY)*P(adjacent)
-		// Traversing belief state top->bottom
-		for (int x = 1; x < w; x++) {
-			for (int y = 1; y < h; y++) {
-				double p = 1.0;
-				// "Bleed" adjacent probabilities into this one
-				if (beliefState[x][y] == ZERO && beliefState[x][y-1] != ZERO)
-					p *= beliefState[x][y-1]*(1-P_STATIONARY);
-				if (beliefState[x][y] == ZERO && beliefState[x-1][y] != ZERO)
-					p *= beliefState[x-1][y]*(1-P_STATIONARY);
-				// "Bleed" this probability into adjacent ones
-				if (beliefState[x][y-1] == ZERO && beliefState[x][y] != ZERO )
-					expansion[x][y-1] = beliefState[x][y]*(1-P_STATIONARY);
-				if (beliefState[x-1][y] == ZERO && beliefState[x][y] != ZERO )
-					expansion[x-1][y] = beliefState[x][y]*(1-P_STATIONARY);
-				
-				if (p != 1.0)
-					expansion[x][y] = p;
-			}
-		}
-		return expansion;
 	}
 	
 	private Coordinate getMax() {
@@ -215,7 +204,6 @@ public class MyRobotStrategy extends RobotStrategy {
 	
 	public Order giveOrder() {
 		Coordinate max = getMax();
-		
 		int order = Order.GREEN_CANNON;
 		if (beliefState[max.x][max.y] > (RED_THRESHOLD - (observations.size()*IMPATIENCE)) && redAmmo > 0) {
 			order = Order.RED_CANNON;
