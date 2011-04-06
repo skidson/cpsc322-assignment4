@@ -17,6 +17,7 @@ public class MyRobotStrategy extends RobotStrategy {
 	private static final double YELLOW_THRESHOLD = 0.65;
 	
 	private static final double IMPATIENCE = 0.01;
+	private static final int HISTORY = 10;
 	
 	private int redAmmo = 1, yellowAmmo = 2;
 	private List<Observation> observations = new ArrayList<Observation>();
@@ -62,12 +63,13 @@ public class MyRobotStrategy extends RobotStrategy {
 		double[][] observation = getObservation(o.sensor, o.pos.x, o.pos.y);
 		
 		/* ************************** TRANSITION PROBABILITY ************************** */
-		double[][] transition = getTransition();
+		double[][] transition = getSumTransition();
 		double[][] expansion = getExpansion();
 		
 		for (int x = 0; x < w; x++)
 			for (int y = 0; y < h; y++)
-				beliefState[x][y] = ((beliefState[x][y] * transition[x][y]) + expansion[x][y]) * observation[x][y];
+				beliefState[x][y] = ((beliefState[x][y] * transition[x][y])
+						/*+ expansion[x][y]*/) * observation[x][y];
 		
 		beliefState = normalize(beliefState);
 		
@@ -135,7 +137,17 @@ public class MyRobotStrategy extends RobotStrategy {
 		double[][] transition = new double[w][h];
 		for (int x = 0; x < w; x++) {
 			for (int y = 0; y < h; y++) {
-				
+				transition[x][y] = ZERO;
+				// "Bleed" into each square, each adjacent square's probability * 
+				// the probability the enemy will move to this one
+				if (x > 0)
+					transition[x][y] += ((1-P_STATIONARY)/4)*beliefState[x-1][y];
+				if (y > 0)
+					transition[x][y] += ((1-P_STATIONARY)/4)*beliefState[x][y-1];
+				if (y < h-1)
+					transition[x][y] += ((1-P_STATIONARY)/4)*beliefState[x][y+1];
+				if (x < w-1)
+					transition[x][y] += ((1-P_STATIONARY)/4)*beliefState[x+1][y];
 			}
 		}
 		return transition;
@@ -219,13 +231,6 @@ public class MyRobotStrategy extends RobotStrategy {
 			for(int y = 0; y < h; y++)
 				state[x][y] /= sum;
 		return state;
-	}
-	
-	public void reset() {
-		for (int x = 0; x < w; x++)
-			for (int y = 0; y < h; y++)
-				if (beliefState[x][y] == ZERO)
-					beliefState[x][y] = 1.0 / ((double)(w*h));
 	}
 	
 	public String stateToString(double[][] array) {
