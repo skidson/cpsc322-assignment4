@@ -140,17 +140,22 @@ public class MyRobotStrategy extends RobotStrategy {
 		double[][] transition = new double[w][h];
 		for (int x = 0; x < w; x++) {
 			for (int y = 0; y < h; y++) {
-				transition[x][y] = beliefState[x][y]*P_STATIONARY;
+				double p_stationary = P_STATIONARY; 
+				if (x == 0 || x == w-1)
+					p_stationary += P_STATIONARY/4.0;
+				if (y == 0 || y == h-1)
+					p_stationary += P_STATIONARY/4.0;
+				transition[x][y] = beliefState[x][y]*p_stationary;
 				// "Bleed" into each square, each adjacent square's probability * 
 				// the probability the enemy will move to this one
 				if (x > 0)
-					transition[x][y] += ((1-P_STATIONARY)/4)*beliefState[x-1][y];
+					transition[x][y] += ((1-P_STATIONARY)/4.0)*beliefState[x-1][y];
 				if (y > 0)
-					transition[x][y] += ((1-P_STATIONARY)/4)*beliefState[x][y-1];
+					transition[x][y] += ((1-P_STATIONARY)/4.0)*beliefState[x][y-1];
 				if (y < h-1)
-					transition[x][y] += ((1-P_STATIONARY)/4)*beliefState[x][y+1];
+					transition[x][y] += ((1-P_STATIONARY)/4.0)*beliefState[x][y+1];
 				if (x < w-1)
-					transition[x][y] += ((1-P_STATIONARY)/4)*beliefState[x+1][y];
+					transition[x][y] += ((1-P_STATIONARY)/4.0)*beliefState[x+1][y];
 			}
 		}
 		return transition;
