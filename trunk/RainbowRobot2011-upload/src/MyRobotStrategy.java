@@ -1,12 +1,11 @@
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
 /**
  * This is the stub code for what you need to implement. All your code should go
  * into this file. Look at the abstract class implementation in RobotStategy.java
  * and read the comments thoroughly. 
- * 
+ * @author Stephen Kidson - #15345077
+ * @author Jeff Payan - #18618074
  */
 public class MyRobotStrategy extends RobotStrategy {
 	Random rand = new Random();
@@ -15,26 +14,32 @@ public class MyRobotStrategy extends RobotStrategy {
 	private static final double P_STATIONARY = 0.52;
 	
 	private static double IMPATIENCE = 0.06;
-	private static double RED_THRESHOLD = 0.61;
-	private static double YELLOW_THRESHOLD = 0.65;
+	private static double RED_THRESHOLD = 0.49;
+	private static double YELLOW_THRESHOLD = 0.45;
 	
-//	IMPATIENCE = 0.09
-//	RED_THRESHOLD = 0.5699999999999998
-//	YELLOW_THRESHOLD = 0.65
-//	10000/10000 games played; 56.158690176322416% wins
+/*  Some tested values
+	IMPATIENCE = 0.09
+	RED_THRESHOLD = 0.5699999999999998
+	YELLOW_THRESHOLD = 0.65
+	10000/10000 games played; 56.158690176322416% wins
 	
-//	IMPATIENCE = 0.060000000000000005
-//	RED_THRESHOLD = 0.5999999999999999
-//	YELLOW_THRESHOLD = 0.65
-//	10000/10000 games played; 56.056477582363144% wins
+	IMPATIENCE = 0.060000000000000005
+	RED_THRESHOLD = 0.5999999999999999
+	YELLOW_THRESHOLD = 0.65
+	10000/10000 games played; 56.056477582363144% wins
 	
-//	IMPATIENCE = 0.060000000000000005
-//	RED_THRESHOLD = 0.6099999999999999
-//	YELLOW_THRESHOLD = 0.65
-//	10000/10000 games played; 56.343330405320614% wins	
-
+	IMPATIENCE = 0.060000000000000005
+	RED_THRESHOLD = 0.6099999999999999
+	YELLOW_THRESHOLD = 0.65
+	10000/10000 games played; 56.343330405320614% wins	
+	
+	IMPATIENCE = 0.060000000000000005
+	RED_THRESHOLD = 0.49
+	YELLOW_THRESHOLD = 0.45
+	10000/10000 games played; 56.846576711644175% wins
+*/
 	private int redAmmo = 1, yellowAmmo = 2;
-	private List<Observation> observations = new ArrayList<Observation>();
+	private int turn = 0;
 	/**
 	 * Rename your bot as you please. This name will show up in the GUI.
 	 */
@@ -43,29 +48,6 @@ public class MyRobotStrategy extends RobotStrategy {
 		return "Aimbot"; 
 	}
 	
-	public static void main(String args[]) {
-		YELLOW_THRESHOLD = 0.45;
-		for (int i = 0; i < 20; i++) {
-			RED_THRESHOLD = 0.50;
-			for (int j = 0; j < 20; j++) {
-				IMPATIENCE = 0.00;
-				for (int k = 0; k < 20; k++) {
-					System.out.println("\nIMPATIENCE = " + IMPATIENCE);
-					System.out.println("RED_THRESHOLD = " + RED_THRESHOLD);
-					System.out.println("YELLOW_THRESHOLD = " + YELLOW_THRESHOLD);
-					try {
-						RobotTester.main(new String[] {""});
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-					IMPATIENCE += 0.01;
-				}
-				RED_THRESHOLD -= 0.01;
-			}
-			YELLOW_THRESHOLD -= 0.01;
-		}
-	}
-
 	/** 
 	 * In this function, we provide you with the sensor information (in the form
 	 * of 4 binary values), and the grid coordinates of your robot.
@@ -90,16 +72,8 @@ public class MyRobotStrategy extends RobotStrategy {
 	 *            Robot's Y coord
 	 */
 	public void updateBeliefState(boolean[] sensor, int xPos, int yPos) {
-		// If no sensor data, keep old belief state
-//		if (!sensor[0] && !sensor[1] && !sensor[2] && !sensor[3])
-//			return;
 		
-		Observation o = new Observation(sensor, xPos, yPos);
-		
-		/* ************************** OBSERVATION PROBABILITY ************************** */
-		double[][] observation = getObservation(o.sensor, o.pos.x, o.pos.y);
-		
-		/* ************************** TRANSITION PROBABILITY ************************** */
+		double[][] observation = getObservation(sensor, xPos, yPos);
 		double[][] transition = getTransition();
 		
 		for (int x = 0; x < w; x++)
@@ -107,18 +81,7 @@ public class MyRobotStrategy extends RobotStrategy {
 				beliefState[x][y] = transition[x][y] * observation[x][y];
 		
 		beliefState = normalize(beliefState);
-		
-		for (int x = 0; x < w; x++)
-			for (int y = 0; y < h; y++)
-				if (Double.isNaN(beliefState[x][y])) {
-					beliefState = observation;
-					break;
-				}
-		
-//		System.out.println(stateToString(getSumTransition()));
-//		System.out.println(stateToString(getObservation(new boolean[] {false, false, true, false}, 5, 5)));
-		
-		observations.add(o);
+		turn++;
 	}
 	
 	private double[][] getObservation(boolean[] sensor, int xPos, int yPos) {
@@ -148,12 +111,6 @@ public class MyRobotStrategy extends RobotStrategy {
 						if (value != ZERO)
 							observation[x][y] *= value;
 					}
-//					int count = 0;
-//					for(boolean fire : sensor)
-//						if (fire)
-//							count++;
-//					if (count > 1)
-//						observation[x][y] *= 2;
 				}
 			}
 		}
@@ -170,6 +127,7 @@ public class MyRobotStrategy extends RobotStrategy {
 				if (y == 0 || y == h-1)
 					p_stationary += P_STATIONARY/4.0;
 				transition[x][y] = beliefState[x][y]*p_stationary;
+				
 				// "Bleed" into each square, each adjacent square's probability * 
 				// the probability the enemy will move to this one
 				if (x > 0)
@@ -205,10 +163,10 @@ public class MyRobotStrategy extends RobotStrategy {
 	public Order giveOrder() {
 		Coordinate max = getMax();
 		int order = Order.GREEN_CANNON;
-		if (beliefState[max.x][max.y] > (RED_THRESHOLD - (observations.size()*IMPATIENCE)) && redAmmo > 0) {
+		if (beliefState[max.x][max.y] > (RED_THRESHOLD - (turn*IMPATIENCE)) && redAmmo > 0) {
 			order = Order.RED_CANNON;
 			redAmmo--;
-		} else if (beliefState[max.x][max.y] > (YELLOW_THRESHOLD - observations.size()*IMPATIENCE) && yellowAmmo > 0) {
+		} else if (beliefState[max.x][max.y] > (YELLOW_THRESHOLD - turn*IMPATIENCE) && yellowAmmo > 0) {
 			order = Order.YELLOW_CANNON;
 			yellowAmmo--;
 		}
@@ -262,13 +220,4 @@ public class MyRobotStrategy extends RobotStrategy {
 		}
 	}
 	
-	private class Observation {
-		public Coordinate pos;
-		public boolean[] sensor;
-		
-		public Observation(boolean[] sensor, int x, int y) {
-			this.pos = new Coordinate(x, y);
-			this.sensor = sensor;
-		}
-	}
 }
