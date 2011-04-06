@@ -64,12 +64,10 @@ public class MyRobotStrategy extends RobotStrategy {
 		
 		/* ************************** TRANSITION PROBABILITY ************************** */
 		double[][] transition = getSumTransition();
-		double[][] expansion = getExpansion();
 		
 		for (int x = 0; x < w; x++)
 			for (int y = 0; y < h; y++)
-				beliefState[x][y] = ((beliefState[x][y] * transition[x][y])
-						/*+ expansion[x][y]*/) * observation[x][y];
+				beliefState[x][y] = transition[x][y] * observation[x][y];
 		
 		beliefState = normalize(beliefState);
 		
