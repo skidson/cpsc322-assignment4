@@ -80,7 +80,7 @@ public class MyRobotStrategy extends RobotStrategy {
 					break;
 				}
 //		System.out.println(stateToString(getSumTransition()));
-//		System.out.println(stateToString(getObservation(new boolean[] {false, false, true, false}, 3, 5)));
+//		System.out.println(stateToString(getObservation(new boolean[] {false, false, true, false}, 5, 5)));
 		observations.add(o);
 	}
 	
@@ -111,7 +111,12 @@ public class MyRobotStrategy extends RobotStrategy {
 						if (value != ZERO)
 							observation[x][y] *= value;
 					}
-					
+					int count = 0;
+					for(boolean fire : sensor)
+						if (fire)
+							count++;
+					if (count > 1)
+						observation[x][y] *= 2;
 				}
 			}
 		}
